@@ -20,14 +20,18 @@
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Pass.h"
+#include "llvm/PassRegistry.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Utils/InstructionNamer.h"
 
 #include "DebugIR.h"
 
@@ -70,10 +74,23 @@ int main(int argc, char *argv[]) {
   }
 
   if (RunInstNamer) {
+    LoopAnalysisManager LAM;
+    FunctionAnalysisManager FAM;
+    CGSCCAnalysisManager CGAM;
+    ModuleAnalysisManager MAM;
 
-    auto PM = llvm::legacy::PassManager();
-    PM.add((llvm::createInstructionNamerPass()));
-    PM.run(*M);
+    llvm::PassBuilder PB;
+
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    llvm::ModulePassManager MPM;
+    MPM.addPass(
+        createModuleToFunctionPassAdaptor(llvm::InstructionNamerPass()));
+    MPM.run(*M, MAM);
   }
 
   auto DisplayM = createDebugInfo(*M.get(), Directory.str(), Filename.str());

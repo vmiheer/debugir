@@ -13,11 +13,11 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # check dependencies
 #
 # LLVM stuff
-find_package(LLVM 14 REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # Find the libraries that correspond to the LLVM components we use
-llvm_map_components_to_libnames(llvm_libs support core irreader transformutils)
+llvm_map_components_to_libnames(llvm_libs passes support core irreader transformutils)
 if (NOT LLVM_ENABLE_RTTI)
   message(STATUS "LLVM does not have RTTI enabled. Building with -fno-rtti")
   add_compile_options(-fno-rtti)
@@ -33,13 +33,11 @@ add_compile_options(-Wno-unknown-pragmas)
 # export compile commands
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # C++ standard
-set(CMAKE_CXX_STANDARD 14)
 
 add_executable(${TARGET}
   DebugIR.cpp
   Main.cpp
 )
-
 target_compile_definitions(${TARGET} PUBLIC ${LLVM_DEFINITIONS})
 target_include_directories(${TARGET} PUBLIC ${PROJECT_SOURCE_DIR})
 # We include LLVM includes as system includes to avoid warnings from there.

@@ -417,7 +417,7 @@ private:
             LexicalBlockFileNode,
             ST->hasName() ? T->getStructName() : "literal", FileNode,
             /*LineNumber=*/0, Layout.getTypeSizeInBits(T),
-            Layout.getABITypeAlignment(T), /*DIFlags=*/llvm::DINode::FlagZero,
+            Log2(Layout.getABITypeAlign(T)), /*DIFlags=*/llvm::DINode::FlagZero,
             /*DerivedFrom=*/nullptr, llvm::DINodeArray()); // filled in later
         N = S; // the Node _is_ the struct type.
 
@@ -446,13 +446,6 @@ private:
 
         Builder.replaceArrays(S, Builder.getOrCreateArray(Elements));
       }
-    } else if (T->isPointerTy()) {
-      Type *PointeeTy = T->getPointerElementType();
-      if (!(N = getType(PointeeTy)))
-        N = Builder.createPointerType(
-            getOrCreateType(PointeeTy), Layout.getPointerTypeSizeInBits(T),
-            Layout.getPrefTypeAlignment(T), /*DWARFAddressSpace=*/None,
-            getTypeName(T));
     } else if (T->isArrayTy()) {
       SmallVector<Metadata *, 4>
           Subscripts; // unfortunately, SmallVector<Type *> does not decay to
@@ -462,7 +455,7 @@ private:
           Builder.getOrCreateSubrange(0, T->getArrayNumElements() - 1));
 
       N = Builder.createArrayType(Layout.getTypeSizeInBits(T),
-                                  Layout.getPrefTypeAlignment(T),
+                                  Log2(Layout.getPrefTypeAlign(T)),
                                   getOrCreateType(T->getArrayElementType()),
                                   Builder.getOrCreateArray(Subscripts));
     } else {
@@ -471,6 +464,8 @@ private:
         encoding = llvm::dwarf::DW_ATE_unsigned;
       else if (T->isFloatingPointTy())
         encoding = llvm::dwarf::DW_ATE_float;
+      else if (T->isPointerTy())
+        encoding = llvm::dwarf::DW_ATE_address;
 
       N = Builder.createBasicType(getTypeName(T), T->getPrimitiveSizeInBits(),
                                   encoding);
